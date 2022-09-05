@@ -1,0 +1,191 @@
+Video source:
+https://www.youtube.com/watch?v=brcHK3P6ChQ&list=PL0Zuz27SZ-6PRCpm9clX0WiBEMB70FWwd&ab_channel=DaveGray
+
+В процесі ми використовуватимемо іконки з FontAwesome, тому потрібно буде встановити їх пакет:
+
+npm i --save @fortawesome/fontawesome-svg-core
+npm install --save @fortawesome/free-solid-svg-icons
+npm install --save @fortawesome/react-fontawesome
+
+Створимо компонент Register.js:
+
+import { useState,useRef,useEffect } from "react";
+import { faCheck,faTimes,faInfoCircle } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+
+Пропишемо набір символів, які будуть використовуватись в формі:
+
+const USER_REGEX = /^[A-z][A-z0-9-_]{3,23}$/;
+const PWD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%]).{8,24}$/;
+
+Використаємо хук useRef, щоб при запуску конценртуватись на необнідному інпуті або на помилці,якащо така
+виникне:
+
+    const userRef = useRef();
+    const errRef = useRef();
+
+Також для кожного інпуту (логін, пароль, підтвердити пароль) буде по 3 хуки - змінна з інформацією, 
+перевірка на валідність і фокус на інпут:
+
+    const [user,setUser] = useState("");
+    const [validName,setValidName] = useState(false);
+    const [userFocus,setUserFocus] = useState(false);
+
+    const [pwd,setPwd] = useState("");
+    const [validPwd,setValidPwd] = useState(false);
+    const [pwdFocus,setPwdFocus] = useState(false);
+
+    const [matchPwd,setMatchPwd] = useState("");
+    const [validMatch,setValidMatch] = useState(false);
+    const [matchFocus,setMatchFocus] = useState(false);
+
+І створимо змінні для успішної реєстрації та помилки:
+
+    const [errMsg,setErrMsg] = useState("");
+    const [success,setSuccess] = useState("");
+
+
+Нам знадобиться 4 хуки useEffect
+
+1 - для фокусу на інпуті, коли компонент завантажується (тому порожній масив залежності):
+
+    useEffect (()=>{
+        useRef.current.focus()
+    },[]);
+
+2 - для перевірки username і якщо так то запису її в validName (щоразу коли user змінюється, тому 
+його в масив залежностідодаємо):
+
+    useEffect(()=>{
+        setValidName(USER_REGEX.test(user))
+    },[user]);
+
+3 - для перевірки і запису як пароля так і перевірки пароля, тому в масив залежності додамо і pwd  і 
+matchPwd:
+
+    useEffect(()=> {
+        const result = PWD_REGEX.test(pwd);
+        setValidPwd(result);
+        const match = pwd === matchPwd;
+        setValidMatch(match)
+    },[pwd,matchPwd]);
+
+4 - щоб очистити повідомлення про помилку, коли ми мінятимемо логін, пароль чи підтвердження пароля,
+тому в масив залежності додамо user,pwd,matchPwd:
+
+    useEffect(()=>{
+        setErrMsg("")
+    },[user,pwd,matchPwd]);
+
+В JSX нам потрібно додати форму з інпутами, тому опишемо деякі його елементи:
+
+1 - input id="username":
+
+            <input
+                type="text"
+                id="username"
+                ref={useRef}
+                autoComplete="off"
+                onChange={(e) => setUser(e.target.value)}
+                required
+                aria-invalid={validName ? "false" : "true"}
+                aria-describedby="uidnote"
+                onFocus={() => setUserFocus(true)}
+                onBlur={() => setUserFocus(false)}
+            />
+    
+    type="text" - тип вводу
+    id="username" - id має співпадати з htmlFor="username" в <label/>
+    ref={useRef} - хук useRef, який буде фокусуватись на цьому інпуті
+    autoComplete="off" - нам не потрібні підказки попередніх введень
+    onChange={(e) => setUser(e.target.value)} - зберігаємо значення введеного в інпут
+    required - обов'язковий для введення
+    aria-invalid={validName ? "false" : "true"} - дозволяє доступ якщо ім'я пройде нашу перевірку на валідність
+    aria-describedby="uidnote" - на це посилання (uidnote) ми прикріпимо вимоги до введення 
+    onFocus={() => setUserFocus(true)} - змінюємо змінну userFocus на true
+    onBlur={() => setUserFocus(false)} - це коли ми полишаємо цей інпут, ми змінюємо userFocus на false
+
+2 - p id="uidnote":
+
+            <p id="uidnote" className={userFocus && user && !validName ? "instructions" : "offscreen"}>
+                <FontAwesomeIcon icon={faInfoCircle}/>
+                4 to 24 characters.<br/>
+                Must begin with a letter.<br/>
+                Letters,numbers,underscores,hyphens allowed.
+            </p>
+
+    id="uidnote" - прив'язка до aria-describedby="uidnote" з інпуту для username
+    className={userFocus && user && !validName ? "instructions" : "offscreen" - якщо ми сфокусовані
+        на інпуті і user існує (заповнений) і імя не пройшло валідацію <p> отримає клас "instructions"
+        і ми побачимо це на екрані, а в іншому випадку цей <p> не буде відображатись
+
+3 - span у label htmlFor="username":
+
+            <label htmlFor="username">
+                Username:
+
+                <span className={validName ? "valid" : "hide"}>
+                    <FontAwesomeIcon icon={faCheck}/>
+                </span>
+                <span className={validName || !user ? "hide" : "invalid"}>
+                    <FontAwesomeIcon icon={faTimes}/>
+                </span>
+
+            </label>
+
+    <span className={validName ? "valid" : "hide"}> - всередині зелена іконка "перевірено", тому
+        відображати її ми будемо якщо імя пройшло нашу перевірку на валідність, інакше відображатись
+        не буде
+
+    <span className={validName || !user ? "hide" : "invalid"}> - якщо імя пройшло валідацію або немає
+        user тоді ми нічого не відображаєм, а в іншому випадку виведемо іконку "помилки" (червоний ікс)
+
+Майже ідентичну структуру додамо для інпуту pwd i matchPwd, за виключенням неяких полів (напр useRef)
+
+І додамо кнопку для нашої форми:
+(всі три поля повинні бути валідними, щоб кнопка працювала - disabled: false)
+
+            <button type="submit" disabled={!validName || !validPwd || validMatch ? true : false}>
+                Sign Up
+            </button>
+
+Також в JSX після форми додамо <p> де буде посилання на сторінку логінації, якщо користувач уже
+створений (це повинен бути роутер лінк, а не <a>):
+
+        <p>
+            Already registred ?<br/>
+            <span className="line">
+                {/* put React Router link here */}
+                <a href="#">Sign In</a>
+            </span>
+        </p>
+
+Потріно буде описати функцію handleSubmit, яку викликає наша форма, однак так як ми не звертаємось
+нараза до АРІ, то просто виведемо наші дані в консоль і змінимо змінну success
+(а взагалі це повинен бути асинхронний запит):
+
+    <form onSubmit={handleSubmit}>
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+
+        console.log(user,pwd);
+        setSuccess(true)
+    };
+
+Також пофіксимо наш JSX, щоб у випадку, якщо success = true (тобто ми зареєструвались) відображалось
+інше вікно :
+
+return (
+    <>
+      {success ? (
+        <section>
+          <h1>Success!</h1>
+          <p>
+            <a href="#">Sign In</a>
+          </p>
+        </section>
+      ) : (
+        <section> ... форма реєстрації
+
+

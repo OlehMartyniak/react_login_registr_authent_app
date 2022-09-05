@@ -1,1 +1,0 @@
-# react_login_registr_authent_app
